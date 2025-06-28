@@ -11,9 +11,12 @@ import {
   SafeAreaView,
 } from 'react-native';
 import io from 'socket.io-client';
-
-const socket = io('http://192.168.1.101:3000'); // Sunucu IP adresin
-
+import BASE_URL from '@/constants/api';
+//const socket = io(BASE_URL); // Sunucu IP adresin
+const socket = io(BASE_URL, {
+  transports: ['websocket'],
+  secure: true,
+});
 export default function HomeScreen() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<string[]>([]);

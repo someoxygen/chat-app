@@ -3,9 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, FlatList, StyleSheet, Alert } from 'react-native';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const socket = io('http://192.168.1.101:3000'); // ← Sunucunun IP adresini güncel tut
-
+import BASE_URL from '@/constants/api';
+//const socket = io(BASE_URL); // ← Sunucunun IP adresini güncel tut
+const socket = io(BASE_URL, {
+  transports: ['websocket'],
+  secure: true,
+});
 interface Message {
   username: string;
   text: string;
@@ -49,7 +52,7 @@ export default function ChatScreen() {
 
   const fetchMessages = async (token: string) => {
     try {
-      const response = await fetch('http://192.168.1.101:3000/messages', {
+      const response = await fetch(`${BASE_URL}/messages`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

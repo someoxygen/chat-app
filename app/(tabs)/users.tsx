@@ -13,13 +13,13 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const windowHeight = Dimensions.get('window').height;
-
+import BASE_URL from '@/constants/api';
 export default function UsersScreen() {
   const [users, setUsers] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    fetch('http://192.168.1.101:3000/users')
+    fetch(`${BASE_URL}/users`)
       .then(res => res.json())
       .then(data => {
         const usernames = data.map((user: any) => user.username);

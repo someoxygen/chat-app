@@ -20,8 +20,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import moment from 'moment';
 import { Audio, Video } from 'expo-av'; // Video da buradan!
-const socket = io('http://192.168.1.101:3000');
+//const socket = io(BASE_URL);
+const socket = io(BASE_URL, {
+  transports: ['websocket'],
+  secure: true,
+});
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import BASE_URL from '@/constants/api';
 
 interface Message {
   _id: string;
@@ -76,7 +81,7 @@ export default function PrivateChatScreen() {
 
   const fetchMessages = async (user1: string, user2: string, token: string) => {
     try {
-      const res = await fetch(`http://192.168.1.101:3000/private-messages/${user1}/${user2}`, {
+      const res = await fetch(`${BASE_URL}/private-messages/${user1}/${user2}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -97,7 +102,7 @@ export default function PrivateChatScreen() {
 
     if (editingId) {
       try {
-        await fetch(`http://192.168.1.101:3000/private-message/${editingId}`, {
+        await fetch(`${BASE_URL}/private-message/${editingId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -125,7 +130,7 @@ export default function PrivateChatScreen() {
 
       socket.emit('private-message', newMessage);
 
-      await fetch('http://192.168.1.101:3000/private-message', {
+      await fetch(`${BASE_URL}/private-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +155,7 @@ export default function PrivateChatScreen() {
   const deleteMessage = async (id: string) => {
     const token = await AsyncStorage.getItem('token');
     try {
-      await fetch(`http://192.168.1.101:3000/private-message/${id}`, {
+      await fetch(`${BASE_URL}/private-message/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -166,7 +171,7 @@ export default function PrivateChatScreen() {
   const deleteAllMessages = async () => {
     const token = await AsyncStorage.getItem('token');
     try {
-      await fetch(`http://192.168.1.101:3000/private-messages/${sender}/${receiver}`, {
+      await fetch(`${BASE_URL}/private-messages/${sender}/${receiver}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -198,7 +203,7 @@ export default function PrivateChatScreen() {
       const token = await AsyncStorage.getItem('token');
 
       try {
-        const res = await fetch('http://192.168.1.101:3000/upload', {
+        const res = await fetch(`${BASE_URL}/upload`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -240,7 +245,7 @@ export default function PrivateChatScreen() {
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
       const token = await AsyncStorage.getItem('token');
       try {
-        const res = await fetch('http://192.168.1.101:3000/upload-video', {
+        const res = await fetch(`${BASE_URL}/upload-video`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -283,7 +288,7 @@ export default function PrivateChatScreen() {
       const token = await AsyncStorage.getItem('token');
 
       try {
-        const res = await fetch('http://192.168.1.101:3000/upload', {
+        const res = await fetch(`${BASE_URL}/upload`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -325,7 +330,7 @@ export default function PrivateChatScreen() {
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
       const token = await AsyncStorage.getItem('token');
       try {
-        const res = await fetch('http://192.168.1.101:3000/upload-video', {
+        const res = await fetch(`${BASE_URL}/upload-video`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -385,7 +390,7 @@ export default function PrivateChatScreen() {
       if (uri) {
         const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
         const token = await AsyncStorage.getItem('token');
-        const res = await fetch('http://192.168.1.101:3000/upload-audio', {
+        const res = await fetch(`${BASE_URL}/upload-audio`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

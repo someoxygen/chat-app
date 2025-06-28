@@ -16,6 +16,7 @@ const { JWT_SECRET } = require('./config');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
+//import BASE_URL from '@/constants/api';
 
 // Middleware
 app.use(cors());
@@ -166,7 +167,8 @@ app.post('/upload', authenticateToken, async (req, res) => {
   fs.writeFile(filepath, buffer, (err) => {
     if (err) return res.status(500).json({ error: 'Dosya yazılamadı' });
 
-    const imageUrl = `http://192.168.1.101:3000/uploads/${filename}`;
+    //const imageUrl = `${BASE_URL}/uploads/${filename}`;
+    const imageUrl = `/uploads/${filename}`;
     res.json({ imageUrl });
   });
 });
@@ -185,7 +187,8 @@ app.post('/upload-audio', authenticateToken, async (req, res) => {
   fs.writeFile(filepath, Buffer.from(base64, 'base64'), (err) => {
     if (err) return res.status(500).json({ error: 'Ses dosyası kaydedilemedi' });
 
-    const audioUrl = `http://192.168.1.101:3000/uploads/${filename}`;
+    //const audioUrl = `${BASE_URL}/uploads/${filename}`;
+    const audioUrl = `/uploads/${filename}`;
     res.json({ audioUrl });
   });
 });
@@ -203,7 +206,8 @@ app.post('/upload-video', authenticateToken, async (req, res) => {
   fs.writeFile(filepath, Buffer.from(base64, 'base64'), (err) => {
     if (err) return res.status(500).json({ error: 'Video kaydedilemedi' });
 
-    const videoUrl = `http://192.168.1.101:3000/uploads/${filename}`;
+    //const videoUrl = `${BASE_URL}/uploads/${filename}`;
+    const videoUrl = `/uploads/${filename}`;
     res.json({ videoUrl });
   });
 });

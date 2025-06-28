@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import BASE_URL from '@/constants/api';
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
@@ -18,7 +19,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     try {
-      const response = await fetch('http://192.168.1.101:3000/register', {
+      const response = await fetch(`${BASE_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
