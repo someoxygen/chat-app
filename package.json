@@ -39,7 +39,6 @@
     "react-native": "0.79.4",
     "react-native-emoji-board": "^1.2.1",
     "react-native-emoji-input": "^1.1.10",
-    "react-native-emoji-selector": "^0.2.0",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
@@ -57,5 +56,20 @@
     "eslint-config-expo": "~9.2.0",
     "typescript": "~5.8.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "aws-sdk",
+          "dotenv",
+          "moment",
+          "react-native-emoji-board",
+          "react-native-emoji-input",
+          "react-native-vector-icons",
+          "socket.io-client"
+        ]
+      }
+    }
+  }
 }
