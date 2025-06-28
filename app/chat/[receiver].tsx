@@ -12,21 +12,21 @@ import {
   Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
-import { Picker } from 'emoji-mart-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import moment from 'moment';
-import { Audio, Video } from 'expo-av'; // Video da buradan!
-//const socket = io(BASE_URL);
+import { Audio, Video } from 'expo-av';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import BASE_URL from '@/constants/api';
+
 const socket = io(BASE_URL, {
   transports: ['websocket'],
   secure: true,
 });
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import BASE_URL from '@/constants/api';
 
 interface Message {
   _id: string;
@@ -42,7 +42,6 @@ export default function PrivateChatScreen() {
   const [sender, setSender] = useState('');
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [showMenu, setShowMenu] = useState(false);
@@ -54,6 +53,10 @@ export default function PrivateChatScreen() {
 
   useEffect(() => {
     init();
+    // cleanup: socket bağlantısı tekrar tekrar açılmasın
+    return () => {
+      socket.off('private-message');
+    }
   }, []);
 
   const init = async () => {
@@ -225,7 +228,7 @@ export default function PrivateChatScreen() {
     }
   };
 
-  // GALERİDEN VİDEO SEÇİP GÖNDERME  (YENİ EKLENDİ)
+  // GALERİDEN VİDEO SEÇİP GÖNDERME
   const pickVideoAndSend = async () => {
     setShowActions(false);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -251,7 +254,7 @@ export default function PrivateChatScreen() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ base64, extension: 'mp4' }), // uzantı önemli!
+          body: JSON.stringify({ base64, extension: 'mp4' }),
         });
 
         const data = await res.json();
@@ -310,7 +313,7 @@ export default function PrivateChatScreen() {
     }
   };
 
-  // KAMERADAN VİDEO ÇEKİP GÖNDERME (YENİ EKLENDİ)
+  // KAMERADAN VİDEO ÇEKİP GÖNDERME
   const takeVideoAndSend = async () => {
     setShowActions(false);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -413,24 +416,19 @@ export default function PrivateChatScreen() {
     }
   };
 
-  // Açılır menü için
   const handleActionPress = (action: 'emoji' | 'gallery' | 'galleryVideo' | 'camera' | 'cameraVideo' | 'audio') => {
     setShowActions(false);
-    if (action === 'emoji') setShowEmojiPicker((prev) => !prev);
     if (action === 'gallery') pickImageAndSend();
     if (action === 'galleryVideo') pickVideoAndSend();
     if (action === 'camera') takePhotoAndSend();
     if (action === 'cameraVideo') takeVideoAndSend();
-    // audio için özel fonksiyon (altta)
   };
 
-  // Menü dışında bir yere tıklanınca menüyü kapatmak için
   const handleBackgroundPress = () => {
     setShowMenu(false);
     setShowActions(false);
   };
 
-  // Sesi oynatmak için
   const playAudio = async (audioUrl: string) => {
     try {
       const { sound } = await Audio.Sound.createAsync({ uri: audioUrl }, { shouldPlay: true });
@@ -444,211 +442,185 @@ export default function PrivateChatScreen() {
     }
   };
 
-  // Video oynatıcıya tıklandığında oynatma
-  const playVideo = async (videoUrl: string) => {
-    // Oynatma logic’i ister istemez Video bileşeninde, ayrıca burada gerek yok
-  };
-
   return (
-    <TouchableWithoutFeedback onPress={handleBackgroundPress}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* HEADER */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{receiver}</Text>
-          <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={styles.menuBtn}>
-            <Text style={styles.menuDots}>⋮</Text>
-          </TouchableOpacity>
-          {showMenu && (
-            <View style={styles.menuDropdown}>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowMenu(false);
-                  Alert.alert(
-                    'Uyarı',
-                    'Tüm mesajları silmek istediğine emin misin?',
-                    [
-                      { text: 'Vazgeç', style: 'cancel' },
-                      {
-                        text: 'Sil',
-                        style: 'destructive',
-                        onPress: deleteAllMessages,
-                      },
-                    ]
-                  );
-                }}
-                style={styles.menuDropdownItem}
-              >
-                <Text style={{ color: '#d32f2f', fontWeight: '600', fontSize: 16 }}>Tüm Mesajları Sil</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* MESAJ LİSTESİ */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onLongPress={() => {
-                if (item.sender === sender) {
-                  Alert.alert('Mesaj Seçimi', 'Bu mesajı düzenlemek mi yoksa silmek mi istiyorsun?', [
-                    { text: 'İptal', style: 'cancel' },
-                    {
-                      text: 'Düzenle',
-                      onPress: () => {
-                        setEditingId(item._id);
-                        setEditingText(item.text);
-                      },
-                    },
-                    {
-                      text: 'Sil',
-                      style: 'destructive',
-                      onPress: () => deleteMessage(item._id),
-                    },
-                  ]);
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.messageContainer,
-                  item.sender === sender ? styles.sent : styles.received,
-                ]}
-              >
-                {/* SES MESAJI */}
-                {item.text.endsWith('.m4a') || item.text.endsWith('.mp3') ? (
-                  <TouchableOpacity onPress={() => playAudio(item.text)}>
-                    <Text style={{ fontSize: 18, color: '#355C7D' }}>🔊 Ses mesajı (Dinle)</Text>
-                  </TouchableOpacity>
-                )
-                  // VİDEO MESAJI GÖSTERİMİ (URL ve uzantı kontrolü)
-                  : (item.text.startsWith('http') && (item.text.endsWith('.mp4') || item.text.endsWith('.mov') || item.text.endsWith('.webm'))) ? (
-                    <Video
-                      source={{ uri: item.text }}
-                      style={styles.videoMessage}
-                      resizeMode="contain"
-                      useNativeControls
-                      shouldPlay={false}
-                      isLooping={false}
-                    />
-                  )
-                    // FOTO MESAJI
-                    : item.text.startsWith('http') && item.text.includes('/uploads/') ? (
-                      <Image source={{ uri: item.text }} style={styles.imageMessage} />
-                    ) : (
-                      <Text style={styles.messageText}>
-                        {item.text}{' '}
-                        {item.edited ? <Text style={styles.edited}>(düzenlendi)</Text> : ''}
-                      </Text>
-                    )}
-                <Text style={styles.meta}>
-                  {item.sender} • {moment(item.timestamp).format('HH:mm')}
-                </Text>
-              </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          {/* HEADER */}
+          <View style={styles.headerRow}>
+            <Text style={styles.headerTitle}>{receiver}</Text>
+            <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={styles.menuBtn}>
+              <Text style={styles.menuDots}>⋮</Text>
             </TouchableOpacity>
-          )}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
-
-        {showEmojiPicker && (
-          <View style={styles.emojiPickerContainer}>
-            <Picker
-              onSelect={(emoji: any) => {
-                if (editingId) {
-                  setEditingText((prev) => prev + emoji.native);
-                } else {
-                  setMessage((prev) => prev + emoji.native);
-                }
-              }}
-              theme="light"
-            />
-          </View>
-        )}
-
-        {/* MESAJ GÖNDERME BAR */}
-        <View style={styles.inputRow}>
-          <View style={{ position: 'relative', justifyContent: 'center' }}>
-            {/* Ana buton */}
-            <TouchableOpacity
-              onPress={() => setShowActions((prev) => !prev)}
-              style={styles.mainIconBtn}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.iconText}>➕</Text>
-            </TouchableOpacity>
-            {/* Yukarı açılır menü */}
-            {showActions && (
-              <View style={styles.actionsMenu}>
+            {showMenu && (
+              <View style={styles.menuDropdown}>
                 <TouchableOpacity
-                  style={styles.menuIconBtn}
-                  onPress={() => handleActionPress('emoji')}
+                  onPress={() => {
+                    setShowMenu(false);
+                    Alert.alert(
+                      'Uyarı',
+                      'Tüm mesajları silmek istediğine emin misin?',
+                      [
+                        { text: 'Vazgeç', style: 'cancel' },
+                        {
+                          text: 'Sil',
+                          style: 'destructive',
+                          onPress: deleteAllMessages,
+                        },
+                      ]
+                    );
+                  }}
+                  style={styles.menuDropdownItem}
                 >
-                  <Text style={styles.iconText}>😀</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuIconBtn}
-                  onPress={() => handleActionPress('gallery')}
-                >
-                  <Text style={styles.iconText}>📎</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuIconBtn}
-                  onPress={() => handleActionPress('galleryVideo')}
-                >
-                  <Text style={styles.iconText}>🎞️</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuIconBtn}
-                  onPress={() => handleActionPress('camera')}
-                >
-                  <Text style={styles.iconText}>📷</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuIconBtn}
-                  onPress={() => handleActionPress('cameraVideo')}
-                >
-                  <Text style={styles.iconText}>🎥</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuIconBtn}
-                  onPress={isRecording ? stopRecording : startRecording}
-                >
-                  <Text style={[styles.iconText, isRecording && { color: '#d32f2f' }]}>
-                    {isRecording ? '⏹️' : '🎤'}
-                  </Text>
+                  <Text style={{ color: '#d32f2f', fontWeight: '600', fontSize: 16 }}>Tüm Mesajları Sil</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
-          <TextInput
-            placeholder="Mesaj yaz..."
-            value={editingId ? editingText : message}
-            onChangeText={(text) => (editingId ? setEditingText(text) : setMessage(text))}
-            style={styles.input}
-            multiline
+
+          {/* MESAJ LİSTESİ */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onLongPress={() => {
+                  if (item.sender === sender) {
+                    Alert.alert('Mesaj Seçimi', 'Bu mesajı düzenlemek mi yoksa silmek mi istiyorsun?', [
+                      { text: 'İptal', style: 'cancel' },
+                      {
+                        text: 'Düzenle',
+                        onPress: () => {
+                          setEditingId(item._id);
+                          setEditingText(item.text);
+                        },
+                      },
+                      {
+                        text: 'Sil',
+                        style: 'destructive',
+                        onPress: () => deleteMessage(item._id),
+                      },
+                    ]);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.messageContainer,
+                    item.sender === sender ? styles.sent : styles.received,
+                  ]}
+                >
+                  {/* SES MESAJI */}
+                  {item.text.endsWith('.m4a') || item.text.endsWith('.mp3') ? (
+                    <TouchableOpacity onPress={() => playAudio(item.text)}>
+                      <Text style={{ fontSize: 18, color: '#355C7D' }}>🔊 Ses mesajı (Dinle)</Text>
+                    </TouchableOpacity>
+                  )
+                    : (item.text.startsWith('http') && (item.text.endsWith('.mp4') || item.text.endsWith('.mov') || item.text.endsWith('.webm'))) ? (
+                      <Video
+                        source={{ uri: item.text }}
+                        style={styles.videoMessage}
+                        resizeMode="contain"
+                        useNativeControls
+                        shouldPlay={false}
+                        isLooping={false}
+                      />
+                    )
+                      : item.text.startsWith('http') && item.text.includes('/uploads/') ? (
+                        <Image source={{ uri: item.text }} style={styles.imageMessage} />
+                      ) : (
+                        <Text style={styles.messageText}>
+                          {item.text}{' '}
+                          {item.edited ? <Text style={styles.edited}>(düzenlendi)</Text> : ''}
+                        </Text>
+                      )}
+                  <Text style={styles.meta}>
+                    {item.sender} • {moment(item.timestamp).format('HH:mm')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
-          <TouchableOpacity
-            onPress={() => sendMessage()}
-            style={styles.sendBtn}
-            activeOpacity={0.8}
-          >
-            <Icon
-              name="send"     // Üçgen, klasik "paper plane" ikonu
-              size={28}
-              color="#fff"
+
+          {/* MESAJ GÖNDERME BAR */}
+          <View style={styles.inputRow}>
+            <View style={{ position: 'relative', justifyContent: 'center' }}>
+              {/* Ana buton */}
+              <TouchableOpacity
+                onPress={() => setShowActions((prev) => !prev)}
+                style={styles.mainIconBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.iconText}>➕</Text>
+              </TouchableOpacity>
+              {showActions && (
+                <View style={styles.actionsMenu}>
+                  <TouchableOpacity
+                    style={styles.menuIconBtn}
+                    onPress={() => handleActionPress('gallery')}
+                  >
+                    <Text style={styles.iconText}>📎</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuIconBtn}
+                    onPress={() => handleActionPress('galleryVideo')}
+                  >
+                    <Text style={styles.iconText}>🎞️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuIconBtn}
+                    onPress={() => handleActionPress('camera')}
+                  >
+                    <Text style={styles.iconText}>📷</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuIconBtn}
+                    onPress={() => handleActionPress('cameraVideo')}
+                  >
+                    <Text style={styles.iconText}>🎥</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuIconBtn}
+                    onPress={isRecording ? stopRecording : startRecording}
+                  >
+                    <Text style={[styles.iconText, isRecording && { color: '#d32f2f' }]}>
+                      {isRecording ? '⏹️' : '🎤'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+            <TextInput
+              placeholder="Mesaj yaz..."
+              value={editingId ? editingText : message}
+              onChangeText={(text) => (editingId ? setEditingText(text) : setMessage(text))}
+              style={styles.input}
+              multiline
             />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => sendMessage()}
+              style={styles.sendBtn}
+              activeOpacity={0.8}
+            >
+              <Icon
+                name="send"
+                size={28}
+                color="#fff"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
